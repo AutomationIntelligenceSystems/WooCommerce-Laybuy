@@ -46,6 +46,7 @@ INSTALLATION
 5. Browse to Admin -> Wocommerce -> Settings -> Checkout -> Laybuy, here you can set your Laybuy Merchant details and choose to display the product price breakdown. The breakdown is displayed with Woocommerce's Product actions, there is a link in the Description to show you where these will display.
 
 == Changelog ==
+3.2.0 Refactored for Laybuy API changes
 3.1.8 use get_woocommerce_currency() instead of $order->get_currency()
 3.1.7 resolved a multisite issue
 3.1.6 Fixed an issue with order stock handling and correct the order complete handling

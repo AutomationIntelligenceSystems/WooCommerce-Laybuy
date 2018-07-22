@@ -18,12 +18,23 @@ class Woocommerce_Laybuy_Form_Handler {
     }
 
     public static function handle_return_url() {
-        // /store/?gateway_id=woocommerce-laybuy&order=wc_order_5ad82b288815b&order_id=3361&status=SUCCESS&token=8i6OSrTRcFgFC73dHPMklCVSdbbUHy1n3LayUaIk
-        if( isset( $_GET['gateway_id'] ) && WOOCOMMERCE_LAYBUY_SLUG == $_GET['gateway_id'] && isset( $_GET['order'] ) && isset( $_GET['order_id'] ) && isset( $_GET['token']
+        
+        // this is filtering all WP urls, we need to fins the one we need
+        
+        // /?gateway_id=woocommerce-laybuy&order=wc_order_5ad82b288815b&order_id=3361&status=SUCCESS&token=8i6OSrTRcFgFC73dHPMklCVSdbbUHy1n3LayUaIk
+        // /?gateway_id=woocommerce-laybuy&order=wc_order_5b54c5d34a8c0&order_id=20&status=ERROR&token=oMLozNUMHKi55TE3H2IsBzByMPrOdZqiXYAMrwDv
+        
+        if( isset( $_GET['gateway_id'] )
+            && WOOCOMMERCE_LAYBUY_SLUG == $_GET['gateway_id']
+            && isset( $_GET['order'] )
+            && isset( $_GET['order_id'] )
+            && isset( $_GET['token']
             ) ) {
+    
             $order_id = absint($_GET['order_id']);
-            $order = wc_get_order($order_id );
-            $status = strtolower( $_GET['status'] );
+            $order    = wc_get_order($order_id);
+            $status   = strtolower($_GET['status']);
+            
 
             if( !$order ) {
                 wc_add_notice( 'Invalid order.' );
@@ -33,38 +44,68 @@ class Woocommerce_Laybuy_Form_Handler {
             }
             // save the received token from laybuy
             update_post_meta($order_id, '_laybuy_token', $_GET['token'] );
-
-            if( empty($status) || 'cancelled' === $status  ) {
+    
+            $redirect = $order->get_cancel_order_url(); //default redirect so if we can't find a match we don't change anything
+            
+            if( empty($status) || 'CANCELLED' === strtoupper($status ) ) {
                 $redirect = $order->get_cancel_order_url();
-                
-            } else if( 'success' === $status ) {
+            }
+            else if (empty($status) || 'ERROR' === strtoupper($status)) {
+                wc_add_notice(__('Error: payment did not complete.', 'woocommerce'), 'error');
+                $redirect = $order->get_cancel_order_url();
+            }
+            else if( 'SUCCESS' === strtoupper($status) ) {
                 
                 // do the laybuy conformation here
                 // so if the thankyou page doesn't happen we have a correct order in place
                 $confimed = self::confirmOrder($order_id);
                 
-                
+                // returns a WP error object
                 if(is_wp_error($confimed)){
                     
-                    wc_add_notice($confimed->get_error_message());
-                    $redirect = add_query_arg([
-                                                  'order_id'      => $order_id,
-                                                  'order'         => $order->get_order_key(),
-                                                  'decline_order' => 'true'
-                                              ], $order->get_cancel_endpoint());
-                    
+                    // show why confirm failed
+                    wc_add_notice($confimed->get_error_message('ERROR') , 'error');
+                   
+                    try{
+                        // maybe declined confirm, force pending
+                        $order->set_status('wc-pending');
+    
+                        // save a note on the order
+                        $order->set_customer_note('Laybuy payment failed: ' . $confimed->get_error_message('ERROR'));
+    
+                        // save to the DB
+                        $order->save();
+    
+                        $redirect = add_query_arg([
+                              'order_id'      => $order_id,
+                              'order'         => $order->get_order_key(),
+                              'decline_order' => 'true'
+                        ], $order->get_cancel_endpoint());
+                        
+                    }
+                    catch (\WC_Data_Exception $e){
+                        // fall though to redirect
+                    }
+
                 }
+                //
+                // we have a successful payment
+                //
                 else {
+                    // order id from laybuy
                     $laybuy_id  = $confimed;
+                    
                     // $order->wc_reduce_stock();
-                    $order->payment_complete($laybuy_id);  // this was missing!
+                    $order->payment_complete($laybuy_id);
+                    
                     //wc_reduce_stock_levels($order); hooked into complete
                     WC()->cart->empty_cart();
                     $redirect = woocommerce_laybuy_get_return_url($order);
                 }
                 
                 
-            } else if( 'declined' === $status ) {
+            }
+            else if( 'DECLINED' === strtoupper( $status ) ) {
 
                 $order_id = absint( $_GET['order_id'] );
                 $order_key = $_GET['order'];
@@ -83,7 +124,7 @@ class Woocommerce_Laybuy_Form_Handler {
                     'decline_order' => 'true'
                 ), $order->get_cancel_endpoint() );
             }
-
+    
             wp_redirect( html_entity_decode( $redirect ) );
             exit;
         }
@@ -199,8 +240,19 @@ class Woocommerce_Laybuy_Form_Handler {
         
         $response = json_decode($request['body']);
         
-        if ('error' === strtolower($response->result)) {
-            $error = new \WP_Error('Order could not be confirmed');
+        
+        //
+        // IMPORTANT NOTE
+        //
+        // The order will often fail here
+        // the card is only charged $1 when the customer is at laybuy,
+        // the 1st installment is charged here adn this often fails due to a lack of funds
+        //
+        // https://docs.laybuy.com/#ConfirmOrder
+        //
+        if ('ERROR' === strtoupper($response->result)) {
+            update_post_meta($order_id, '_laybuy_order_failed', $response->result );
+            $error = new \WP_Error($response->result, $response->error );
             return $error;
         }
         else {
