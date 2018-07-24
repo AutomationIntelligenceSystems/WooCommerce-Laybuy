@@ -34,7 +34,6 @@ class Woocommerce_Laybuy_Gateway extends WC_Payment_Gateway {
         }*/
         
         add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
-        add_action( 'woocommerce_thankyou_' . $this->id, array( $this, 'thankyou_page' ) );
 
     }
     
@@ -290,76 +289,6 @@ class Woocommerce_Laybuy_Gateway extends WC_Payment_Gateway {
 
     }
 
-    /**
-     * Output for the order received page.
-     */
-    public function thankyou_page( $order_id ) {
-        $order = wc_get_order( $order_id );
-
-        $confirm_order_request = $this->confirm_order( $order_id );
-        if( $confirm_order_request['result'] ) {
-            $order->update_status( 'processing' );
-        } else {
-            $order->update_status( 'failed', $confirm_order_request['error'] );
-        }
-    }
-
-    public function confirm_order( $order_id ) {
-        
-        if(!get_post_meta($order_id, '_laybuy_order_id', TRUE)) {
-    
-    
-            if ($this->is_sandbox_enabled()) {
-                $endpoint = SANDBOX_API_ENDPOINT;
-            }
-            else {
-                $endpoint = PRODUCTION_API_ENDPOINT;
-            }
-    
-            $endpoint .= CONFIRM_ORDER_SUFFIX;
-    
-            if (!get_post_meta($order_id, '_laybuy_token', TRUE)) {
-                return [
-                    'result' => FALSE,
-                    'error'  => 'Token is not saved in database'
-                ];
-            }
-    
-            $request_data = [
-                'token' => get_post_meta($order_id, '_laybuy_token', TRUE)
-            ];
-    
-            $request = wp_remote_post($endpoint, [
-                                                   'headers' => [
-                                                       'Authorization' => 'Basic ' . base64_encode($this->get_merchant_id() . ':' . $this->get_api_key())
-                                                   ],
-                                                   'body'    => json_encode($request_data)
-                                               ]);
-    
-            $response = json_decode($request['body']);
-    
-            if ('error' == strtolower($response->result)) {
-                return [
-                    'result' => FALSE,
-                    'error'  => $response->error
-                ];
-            }
-            else {
-                update_post_meta($order_id, '_laybuy_order_id', $response->orderId);
-                return [
-                    'result'  => TRUE,
-                    'message' => 'Order is confirmed'
-                ];
-            }
-        }
-        else {
-            return [
-                'result'  => TRUE,
-                'message' => 'Order is confirmed'
-            ];
-        }
-    }
-    
     public function get_merchant_id()  {
         return $this->get_option( 'merchant_id' );
     }

@@ -33,7 +33,7 @@ class Woocommerce_Laybuy_Form_Handler {
     
             $order_id = absint($_GET['order_id']);
             $order    = wc_get_order($order_id);
-            $status   = strtolower($_GET['status']);
+            $status   = strtoupper($_GET['status']);
             
 
             if( !$order ) {
@@ -44,13 +44,20 @@ class Woocommerce_Laybuy_Form_Handler {
             }
             // save the received token from laybuy
             update_post_meta($order_id, '_laybuy_token', $_GET['token'] );
+            update_post_meta($order_id, '_laybuy_return_status', $status);
+    
+            // force pending, make sure the order can't leave us as proccesing unless we get a success & confirmed or id
+            $order->set_status('wc-pending');
+    
+            // save to the DB
+            $order->save();
     
             $redirect = $order->get_cancel_order_url(); //default redirect so if we can't find a match we don't change anything
             
             if( empty($status) || 'CANCELLED' === strtoupper($status ) ) {
                 $redirect = $order->get_cancel_order_url();
             }
-            else if (empty($status) || 'ERROR' === strtoupper($status)) {
+            else if ( 'ERROR' === strtoupper($status)) {
                 wc_add_notice(__('Error: payment did not complete.', 'woocommerce'), 'error');
                 $redirect = $order->get_cancel_order_url();
             }
@@ -59,6 +66,7 @@ class Woocommerce_Laybuy_Form_Handler {
                 // do the laybuy conformation here
                 // so if the thankyou page doesn't happen we have a correct order in place
                 $confimed = self::confirmOrder($order_id);
+    
                 
                 // returns a WP error object
                 if(is_wp_error($confimed)){
@@ -91,11 +99,11 @@ class Woocommerce_Laybuy_Form_Handler {
                 //
                 // we have a successful payment
                 //
-                else {
+                elseif( intval($confimed) > 0 )  {
                     // order id from laybuy
                     $laybuy_id  = $confimed;
                     
-                    // $order->wc_reduce_stock();
+                    // complete the order and reduce stock if required
                     $order->payment_complete($laybuy_id);
                     
                     //wc_reduce_stock_levels($order); hooked into complete
@@ -103,6 +111,7 @@ class Woocommerce_Laybuy_Form_Handler {
                     $redirect = woocommerce_laybuy_get_return_url($order);
                 }
                 
+                // if theres a problem fall though
                 
             }
             else if( 'DECLINED' === strtoupper( $status ) ) {
@@ -239,8 +248,10 @@ class Woocommerce_Laybuy_Form_Handler {
                                            ]);
         
         $response = json_decode($request['body']);
-        
-        
+    
+        update_post_meta($order_id, '_laybuy_confirm_result', $request['body'] );
+    
+    
         //
         // IMPORTANT NOTE
         //
@@ -250,17 +261,16 @@ class Woocommerce_Laybuy_Form_Handler {
         //
         // https://docs.laybuy.com/#ConfirmOrder
         //
-        if ('ERROR' === strtoupper($response->result)) {
-            update_post_meta($order_id, '_laybuy_order_failed', $response->result );
-            $error = new \WP_Error($response->result, $response->error );
-            return $error;
+        if ('SUCCESS' === strtoupper($response->result)) {
+            update_post_meta($order_id, '_laybuy_order_id', $response->orderId);
+            return $response->orderId;
         }
         else {
-            update_post_meta($order_id, '_laybuy_order_id', $response->orderId);
-            return  $response->orderId;
+            update_post_meta($order_id, '_laybuy_order_failed', $response->result);
+            $error = new \WP_Error($response->result, $response->error);
+            return $error;
         }
         
-       
     }
     
 }
