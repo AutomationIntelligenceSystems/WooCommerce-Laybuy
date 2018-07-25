@@ -64,6 +64,18 @@ class Woocommerce_Laybuy_Gateway extends WC_Payment_Gateway {
                 'default'     => __( 'Receive your order now, pay over 6 weeks interest free!<br>Selecting Laybuy will re-direct you to a secure checkout facility.', 'woocommerce_laybuy' ),
                 'desc_tip'    => true,
             ),
+
+            'laybuy_currency' => array(
+                'title'       => __('Currency', 'woocommerce_laybuy'),
+                'type'        => 'select',
+                'description' => __('Select the Currency your Laybuy account uses.', 'woocommerce_laybuy'),
+                'default'     => 'NZD',
+                'options'     => array(
+                    'NZD'        => __('New Zealand Dollars', 'woocommerce_laybuy'),
+                    'AUD'      => __('Australian Dollars', 'woocommerce_laybuy'),
+                )
+            ),
+            
             'price_breakdown_option_product_page' => array(
                 'title'       => __( 'Price breakdown on products', 'woocommerce_laybuy' ),
                 'type'        => 'select',
@@ -165,9 +177,18 @@ class Woocommerce_Laybuy_Gateway extends WC_Payment_Gateway {
         //error_log($order_id);
        
         Woocommerce_Laybuy_Logger::log('Incoming process_payment: ' . print_r($order_id, TRUE));
+    
+        $settings = woocommerce_laybuy_get_settings();
+        $laybuy_currency   =  $settings['laybuy_currency'];
         
+        if(!in_array($laybuy_currency, ['NZD','AUD'])){
+            $laybuy_currency = 'NZD'; // just in case the default doesn't come though ;-)
+        }
         
-        if( get_post_meta( $order_id, '_laybuy_token', true ) ) {
+        /*
+         * Don't reuse the payment token as these are really single use
+         *
+         * if( get_post_meta( $order_id, '_laybuy_token', true ) ) {
     
             Woocommerce_Laybuy_Logger::log("Incoming $order_id _laybuy_token _request:" . print_r($_REQUEST, TRUE));
             
@@ -181,7 +202,7 @@ class Woocommerce_Laybuy_Gateway extends WC_Payment_Gateway {
                 'result'   => 'success',
                 'redirect' => $redirect,
             );
-        }
+        }*/
 
         $order = wc_get_order( $order_id );
 
@@ -194,7 +215,7 @@ class Woocommerce_Laybuy_Gateway extends WC_Payment_Gateway {
         $items_total = $total;
         $request_data = array(
             'amount'    => $total,
-            'currency'  => get_woocommerce_currency(),
+            'currency'  => $laybuy_currency, // from simple setting value (not using Laybuys currency list yet)
             'returnUrl' => $this->get_custom_return_url( $order ),
             'merchantReference' => '#' . uniqid() . $order_id . time(),
             'customer' => array(
