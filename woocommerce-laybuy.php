@@ -72,20 +72,7 @@ function woocommerce_laybuy_notice_dismissed_ssl_update() {
 add_action('admin_notices', 'woocommerce_laybuy_recommend_ssl_notice');
 
 function woocommerce_laybuy_recommend_ssl_notice() {
-    
-    //if( !is_ssl() ) {
-    $dismissed = get_option('woocommerce-laybuy-notice-dismissed-ssl', null);
-    
-    if (!is_ssl() && empty($dismissed) ) {
-        ?>
-        <div class="error notice woocommerce-laybuy-notice is-dismissible">
-            <p><?php _e('Enabling SSL is highly recommended when using the Laybuy payment option.', 'woocommerce_laybuy'); ?></p>
-            <button type="button" class="notice-dismiss">
-                <span class="screen-reader-text">Hide</span>
-            </button>
-        </div>
-        <?php
-    }
+
     
 }
 
