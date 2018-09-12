@@ -27,9 +27,9 @@ SETUP
 
 REQUIREMENTS
 
-PHP version 5.4 or greater (PHP 5.6+ is recommended)
+PHP version 5.6 or greater (PHP 7.1+ is recommended)
 
-MySQL version 5.0 or greater (MySQL 5.6+ is recommended)
+MySQL version 5.5 or greater (MySQL 5.6+ is recommended)
 
 WooCommerce 3.0+ / Requires WordPress 4.1+
 
