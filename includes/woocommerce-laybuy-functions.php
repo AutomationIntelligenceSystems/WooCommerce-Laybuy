@@ -107,7 +107,7 @@ function woocommerce_laybuy_add_price_breakdown_for_text_only() {
 		$html_breakdown = sprintf('%1$s%2$s',
 			      '<link href="https://fonts.googleapis.com/css?family=Montserrat:300,700" rel="stylesheet">',
                 '<p style="font-family: Montserrat, sans-serif; color: black; font-weight: 300; font-size: 12px;">'.
-                   "or 6 weekly interest free payments of <strong> ". get_woocommerce_currency() . "{$weekly_payment}</strong> with ".
+                   "or 6 weekly interest free payments of <strong> ". get_woocommerce_currency() . " {$weekly_payment}</strong> with ".
                  '<a href="https://www.laybuy.com" target="_blank">'.
                  '<img style="float:none; display:inline-block; vertical-align:middle;padding-left: 2px; padding-bottom:3px; width:80px" src="' .
                 $laybuyicon . '"></a></p>');
@@ -141,7 +141,7 @@ function woocommerce_laybuy_add_price_breakdown_for_text_and_table() {
         $html_breakdown = sprintf('%1$s%2$s%3$s',
                                   '<link href="https://fonts.googleapis.com/css?family=Montserrat:300,700" rel="stylesheet">' ,
                                  '<p style="font-family: Montserrat, sans-serif; color: black; font-weight: 300; font-size: 14px;">',
-                                  "or 6 interest free payments from <strong style='font-weight: 700;'>". get_woocommerce_currency() ."{$weekly_payment}</strong> with ",
+                                  "or 6 interest free payments from <strong style='font-weight: 700;'>". get_woocommerce_currency() ." {$weekly_payment}</strong> with ",
                                   '<a href="https://www.laybuy.com" target="_blank"><img style="float:none; display:inline; vertical-align:middle;padding-left: 4px" src="' . $laybuyicon . '"></a></p>'
         );
 
@@ -228,7 +228,7 @@ function woocommerce_laybuy_modify_payment_description_for_text_and_table( $desc
     $laybuyicon = WOOCOMMERCE_LAYBUY_PLUGIN_PATH . 'images/laybuy_logo_small.svg';
     $html_breakdown = sprintf('%1$s%2$s%3$s',
                               '<link href="https://fonts.googleapis.com/css?family=Montserrat:300,700&text=.abefilkmnoprstuwy1234567890$PNZD" rel="stylesheet">' . '<p style="font-family: Montserrat, sans-serif; color: black; font-weight: 300; font-size: 14px;">',
-                              "or 6 interest free payments from <strong>{$weekly_payment}</strong> with ",
+                              "or 6 interest free payments from <strong>". get_woocommerce_currency() ." {$weekly_payment}</strong> with ",
                               '<a href="https://www.laybuy.com" target="_blank"><img src="' . $laybuyicon . '"></a></p>'
     );
 
